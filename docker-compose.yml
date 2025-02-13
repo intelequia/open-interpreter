@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  open_interpreter:
+    image: intelewriter-open-interpreter
+    build: ./
+    container_name: intelewriter-open-interpreter
+    ports:
+      - "2222:8000"         # Mapea el puerto 8000 del contenedor al puerto 8000 de la máquina local
+    environment:
+      - INTERPRETER_HOST=0.0.0.0
+      - INTERPRETER_INSECURE_ROUTES="True"

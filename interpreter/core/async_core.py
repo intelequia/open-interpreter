@@ -677,38 +677,37 @@ def create_router(async_interpreter):
         else:
             return json.dumps({"error": "Setting not found"}), 404
 
-    if os.getenv("INTERPRETER_INSECURE_ROUTES", "").lower() == "true":
 
-        @router.post("/run")
-        async def run_code(payload: Dict[str, Any]):
-            language, code = payload.get("language"), payload.get("code")
-            if not (language and code):
-                return {"error": "Both 'language' and 'code' are required."}, 400
-            try:
-                print(f"Running {language}:", code)
-                output = async_interpreter.computer.run(language, code)
-                print("Output:", output)
-                return {"output": output}
-            except Exception as e:
-                return {"error": str(e)}, 500
+    @router.post("/run")
+    async def run_code(payload: Dict[str, Any]):
+        language, code = payload.get("language"), payload.get("code")
+        if not (language and code):
+            return {"error": "Both 'language' and 'code' are required."}, 400
+        try:
+            print(f"Running {language}:", code)
+            output = async_interpreter.computer.run(language, code)
+            print("Output:", output)
+            return {"output": output}
+        except Exception as e:
+            return {"error": str(e)}, 500
 
-        @router.post("/upload")
-        async def upload_file(file: UploadFile = File(...), path: str = Form(...)):
-            try:
-                with open(path, "wb") as output_file:
-                    shutil.copyfileobj(file.file, output_file)
-                return {"status": "success"}
-            except Exception as e:
-                return {"error": str(e)}, 500
+    @router.post("/upload")
+    async def upload_file(file: UploadFile = File(...), path: str = Form(...)):
+        try:
+            with open(path, "wb") as output_file:
+                shutil.copyfileobj(file.file, output_file)
+            return {"status": "success"}
+        except Exception as e:
+            return {"error": str(e)}, 500
 
-        @router.get("/download/{filename}")
-        async def download_file(filename: str):
-            try:
-                return StreamingResponse(
-                    open(filename, "rb"), media_type="application/octet-stream"
-                )
-            except Exception as e:
-                return {"error": str(e)}, 500
+    @router.get("/download/{filename}")
+    async def download_file(filename: str):
+        try:
+            return StreamingResponse(
+                open(filename, "rb"), media_type="application/octet-stream"
+            )
+        except Exception as e:
+            return {"error": str(e)}, 500
 
     ### OPENAI COMPATIBLE ENDPOINT
 
