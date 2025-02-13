@@ -9,6 +9,7 @@ import traceback
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 
 import shortuuid
 from pydantic import BaseModel
@@ -40,6 +41,7 @@ except:
 
 complete_message = {"role": "server", "type": "status", "content": "complete"}
 
+BASE_DIR = Path("files").resolve()
 
 class AsyncInterpreter(OpenInterpreter):
     def __init__(self, *args, **kwargs):
@@ -702,9 +704,11 @@ def create_router(async_interpreter):
 
     @router.get("/download/{filename}")
     async def download_file(filename: str):
+        full_path = (BASE_DIR / filename).resolve()
+
         try:
             return StreamingResponse(
-                open(filename, "rb"), media_type="application/octet-stream"
+                open(full_path, "rb"), media_type="application/octet-stream"
             )
         except Exception as e:
             return {"error": str(e)}, 500
