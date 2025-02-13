@@ -20,6 +20,13 @@ COPY poetry.lock pyproject.toml README.md ./
 # Expose port 8000
 EXPOSE 8000
 
+# Install modules 
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN rm requirements.txt
+
 # Install server dependencies
 RUN pip install ".[server]"
 
