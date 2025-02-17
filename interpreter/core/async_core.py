@@ -10,6 +10,7 @@ from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+import hashlib
 
 import shortuuid
 from pydantic import BaseModel
@@ -31,6 +32,7 @@ try:
         Request,
         UploadFile,
         WebSocket,
+        Query
     )
     from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
     from starlette.status import HTTP_403_FORBIDDEN
@@ -693,14 +695,56 @@ def create_router(async_interpreter):
         except Exception as e:
             return {"error": str(e)}, 500
 
-    @router.post("/upload")
-    async def upload_file(file: UploadFile = File(...), path: str = Form(...)):
+
+    @router.get("/files/{file_id}")
+    async def download_agent_file(file_id:str, entity_id:str = Query(...)):
+        current_diretory = os.getcwd()
+        download_path = os.path.join(current_diretory,"uploads",entity_id,file_id)
         try:
-            with open(path, "wb") as output_file:
-                shutil.copyfileobj(file.file, output_file)
-            return {"status": "success"}
+            return StreamingResponse(
+                open(download_path, "rb"), media_type="application/octet-stream"
+            )
         except Exception as e:
             return {"error": str(e)}, 500
+
+    @router.post("/upload")
+    async def upload_file(
+        file: UploadFile = File(...), 
+        path: str = Form(...),
+        entity_id:str = Form(...),
+        ):
+
+        # Getting working path
+        current_diretory = os.getcwd()
+        uploads_path = os.path.join (current_diretory, path) 
+        agent_path = os.path.join (uploads_path, entity_id)
+
+        # If directory doesnt exist create it 
+        if not os.path.exists(agent_path):
+            os.makedirs(agent_path)
+        
+        try:
+            # Get file extension
+            original_filename = file.filename
+            file_extension = os.path.splitext(original_filename)[1]  
+
+            # Generate Hashed ID and append extension
+            hash_sha256 = hashlib.sha256()
+            hash_sha256.update(original_filename.encode('utf-8'))
+
+            file_id = hash_sha256.hexdigest() + file_extension
+
+            full_path =os.path.join(agent_path,file_id)
+
+            # Create file into filesystem
+            with open(full_path, "wb") as output_file:
+                shutil.copyfileobj(file.file, output_file)
+
+            return {"message": "success", "file_id":file_id}
+
+        except Exception as e:
+            return {"error": str(e)}, 500
+
 
     @router.get("/download/{filename}")
     async def download_file(filename: str):
