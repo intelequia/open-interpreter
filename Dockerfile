@@ -11,6 +11,10 @@ FROM python:3.11.8
 ENV HOST 0.0.0.0
 # ^ Sets the server host to 0.0.0.0, Required for the server to be accessible outside the container
 
+RUN useradd -m intelewriter
+USER intelewriter
+WORKDIR /home/intelewriter
+
 # Copy required files into container
 RUN mkdir -p interpreter scripts
 COPY interpreter/ interpreter/
