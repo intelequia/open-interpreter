@@ -1,6 +1,9 @@
+import os
+from dotenv import find_dotenv, load_dotenv
+load_dotenv(find_dotenv())
+
 import asyncio
 import json
-import os
 import shutil
 import socket
 import threading
@@ -11,6 +14,19 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 import hashlib
+
+
+from azure.monitor.events.extension import track_event
+from azure.monitor.opentelemetry import configure_azure_monitor
+from opentelemetry import trace
+from opentelemetry.trace import (
+    SpanKind,
+    get_tracer_provider,
+    set_tracer_provider,
+)
+from opentelemetry.propagate import extract
+configure_azure_monitor( connection_string=os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"))
+
 
 import shortuuid
 from pydantic import BaseModel
@@ -684,13 +700,17 @@ def create_router(async_interpreter):
 
     @router.post("/run")
     async def run_code(payload: Dict[str, Any]):
-        language, code = payload.get("language"), payload.get("code")
+        print(payload)
+        language, code, userEmail = payload.get("language"), payload.get("code"), payload.get("user_email")
         if not (language and code):
             return {"error": "Both 'language' and 'code' are required."}, 400
         try:
-            print(f"Running {language}:", code)
             output = async_interpreter.computer.run(language, code)
-            print("Output:", output)
+            track_event("Code-Interpreter", {
+                "language": language,
+                "exec-output": json.dumps(output),
+                "email":userEmail,
+            })
             return {"output": output}
         except Exception as e:
             return {"error": str(e)}, 500

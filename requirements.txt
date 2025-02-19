@@ -6,3 +6,7 @@ pdfplumber
 reportlab
 xlsxwriter
 fpdf
+azure-mgmt-applicationinsights==4.0.0
+azure-identity==1.18.0
+azure-monitor-opentelemetry==1.6.4
+azure-monitor-events-extension==0.1.0
