@@ -13,7 +13,34 @@ ENV HOST 0.0.0.0
 
 
 # Copy required files into container
-RUN mkdir -p interpreter scripts
+WORKDIR /app
+
+RUN mkdir -p interpreter scripts files uploads
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		ca-certificates \
+		apt-transport-https \
+		gnupg \
+		wget \
+		nodejs \
+		npm \
+		r-base \
+		ruby-full \
+		openjdk-17-jdk-headless \
+		chromium \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
+	&& dpkg -i packages-microsoft-prod.deb \
+	&& rm packages-microsoft-prod.deb \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		dotnet-sdk-8.0 \
+		powershell \
+	&& rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_BIN=/usr/bin/chromium
 COPY interpreter/ interpreter/
 COPY scripts/ scripts/
 COPY poetry.lock pyproject.toml README.md ./
@@ -31,4 +58,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install ".[server]"
 
 # Start the server
+WORKDIR /app/files
+
 ENTRYPOINT ["interpreter", "--server"]

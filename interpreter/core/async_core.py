@@ -60,6 +60,8 @@ except:
 complete_message = {"role": "server", "type": "status", "content": "complete"}
 
 BASE_DIR = Path("files").resolve()
+_run_lock = asyncio.Lock()
+_last_user_id = None
 
 class AsyncInterpreter(OpenInterpreter):
     def __init__(self, *args, **kwargs):
@@ -700,16 +702,53 @@ def create_router(async_interpreter):
 
     @router.post("/run")
     async def run_code(payload: Dict[str, Any]):
+        global _last_user_id
         print(payload)
-        language, code, userEmail = payload.get("language"), payload.get("code"), payload.get("user_email")
+        language = payload.get("language")
+        code = payload.get("code")
+        user_email = payload.get("user_email")
+        user_id = payload.get("user_id") or user_email
+        timeout_ms = payload.get("timeout_ms")
         if not (language and code):
             return {"error": "Both 'language' and 'code' are required."}, 400
         try:
-            output = async_interpreter.computer.run(language, code)
+            def reset_active_languages():
+                try:
+                    for _, lang_instance in list(async_interpreter.computer.terminal._active_languages.items()):
+                        try:
+                            lang_instance.terminate()
+                        except Exception:
+                            pass
+                    async_interpreter.computer.terminal._active_languages = {}
+                except Exception as reset_error:
+                    print(f"Warning: Failed to reset languages: {reset_error}")
+
+            try:
+                timeout_ms_value = int(timeout_ms) if timeout_ms is not None else int(os.getenv("RUN_TIMEOUT_MS", "90000"))
+            except Exception:
+                timeout_ms_value = int(os.getenv("RUN_TIMEOUT_MS", "90000"))
+            if timeout_ms_value <= 0:
+                timeout_ms_value = int(os.getenv("RUN_TIMEOUT_MS", "90000"))
+
+            async with _run_lock:
+                if user_id and _last_user_id != user_id:
+                    reset_active_languages()
+                _last_user_id = user_id
+
+                try:
+                    output = await asyncio.wait_for(
+                        asyncio.to_thread(async_interpreter.computer.run, language, code),
+                        timeout=timeout_ms_value / 1000,
+                    )
+                except asyncio.TimeoutError:
+                    reset_active_languages()
+                    return {"error": "Execution timed out"}, 504
+
             track_event("Code-Interpreter", {
                 "language": language,
                 "exec-output": json.dumps(output),
-                "email":userEmail,
+                "email": user_email,
+                "user_id": user_id,
             })
             return {"output": output}
         except Exception as e:
