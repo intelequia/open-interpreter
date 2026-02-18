@@ -16,6 +16,7 @@ ENV HOST 0.0.0.0
 WORKDIR /app
 
 RUN mkdir -p interpreter scripts files uploads
+RUN mkdir -p /mnt && ln -s /app/files /mnt/data && ln -s /app/workspaces /mnt/uploads
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
