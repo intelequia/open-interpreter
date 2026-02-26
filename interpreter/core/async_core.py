@@ -16,8 +16,6 @@ from pathlib import Path
 import hashlib
 
 
-from azure.monitor.events.extension import track_event
-from azure.monitor.opentelemetry import configure_azure_monitor
 from opentelemetry import trace
 from opentelemetry.trace import (
     SpanKind,
@@ -25,7 +23,16 @@ from opentelemetry.trace import (
     set_tracer_provider,
 )
 from opentelemetry.propagate import extract
-configure_azure_monitor( connection_string=os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"))
+
+_appinsights_conn_str = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "").strip()
+if _appinsights_conn_str:
+    from azure.monitor.events.extension import track_event
+    from azure.monitor.opentelemetry import configure_azure_monitor
+    configure_azure_monitor(connection_string=_appinsights_conn_str)
+else:
+    # App Insights not configured – provide a no-op track_event so callers don't break
+    def track_event(*args, **kwargs):
+        pass
 
 
 import shortuuid
