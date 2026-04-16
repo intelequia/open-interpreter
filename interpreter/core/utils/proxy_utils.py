@@ -4,6 +4,51 @@ Proxy configuration utilities for handling HTTP/HTTPS proxies in downloads and A
 
 import os
 from typing import Dict, Optional
+from urllib.parse import urlparse
+
+
+def _should_bypass_proxy(url: str) -> bool:
+    """
+    Check if a URL should bypass the proxy based on NO_PROXY setting.
+    
+    Args:
+        url: The URL to check
+        
+    Returns:
+        True if the URL should bypass proxy, False otherwise
+    """
+    no_proxy = os.getenv('no_proxy') or os.getenv('NO_PROXY')
+    if not no_proxy:
+        return False
+    
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or parsed.netloc
+        
+        # Split NO_PROXY by comma and process each pattern
+        for pattern in no_proxy.split(','):
+            pattern = pattern.strip()
+            if not pattern:
+                continue
+            
+            # Handle wildcard patterns
+            if pattern.startswith('*.'):
+                # Domain suffix match: *.example.com matches subdomain.example.com
+                domain_suffix = pattern[2:]  # Remove '*.'
+                if hostname.endswith(domain_suffix) or hostname == domain_suffix[2:]:
+                    return True
+            elif pattern.startswith('.'):
+                # Domain suffix match: .example.com matches example.com and *.example.com
+                if hostname.endswith(pattern) or hostname == pattern[1:]:
+                    return True
+            else:
+                # Exact match (including localhost, IP addresses, etc.)
+                if hostname == pattern or hostname.startswith(pattern):
+                    return True
+    except Exception:
+        pass
+    
+    return False
 
 
 def get_proxy_config() -> Dict[str, str]:
@@ -14,6 +59,7 @@ def get_proxy_config() -> Dict[str, str]:
     - http_proxy / HTTP_PROXY
     - https_proxy / HTTPS_PROXY
     - all_proxy / ALL_PROXY
+    - no_proxy / NO_PROXY (for bypassing proxy for specific hosts)
     
     Returns:
         Dictionary with 'http' and 'https' keys for use with requests library.
@@ -59,5 +105,10 @@ def get_wget_proxy_args() -> list:
     https_proxy = os.getenv('https_proxy') or os.getenv('HTTPS_PROXY')
     if https_proxy:
         args.extend(['-e', f'https_proxy={https_proxy}'])
+    
+    # Add no_proxy if configured
+    no_proxy = os.getenv('no_proxy') or os.getenv('NO_PROXY')
+    if no_proxy:
+        args.extend(['-e', f'no_proxy={no_proxy}'])
     
     return args
