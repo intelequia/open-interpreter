@@ -31,16 +31,25 @@ if "--os" in sys.argv:
     import pkg_resources
     import requests
     from packaging import version
+    
+    # Add proxy support
+    from .core.utils.proxy_utils import get_proxy_config
 
     def check_for_update():
         # Fetch the latest version from the PyPI API
-        response = requests.get(f"https://pypi.org/pypi/open-interpreter/json")
-        latest_version = response.json()["info"]["version"]
+        try:
+            proxies = get_proxy_config()
+            response = requests.get(f"https://pypi.org/pypi/open-interpreter/json", proxies=proxies, timeout=5)
+            response.raise_for_status()
+            latest_version = response.json()["info"]["version"]
 
-        # Get the current version using pkg_resources
-        current_version = pkg_resources.get_distribution("open-interpreter").version
+            # Get the current version using pkg_resources
+            current_version = pkg_resources.get_distribution("open-interpreter").version
 
-        return version.parse(latest_version) > version.parse(current_version)
+            return version.parse(latest_version) > version.parse(current_version)
+        except Exception as e:
+            # If version check fails (due to proxy or network issues), don't block startup
+            return False
 
     if check_for_update():
         print_markdown(

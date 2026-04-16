@@ -11,6 +11,9 @@ import psutil
 import requests
 import wget
 
+# Add proxy support
+from ..core.utils.proxy_utils import get_wget_proxy_args
+
 
 def local_setup(interpreter, provider=None, model=None):
     def download_model(models_dir, models, interpreter):
@@ -162,7 +165,20 @@ def local_setup(interpreter, provider=None, model=None):
                 # time.sleep(0.3)
 
                 print(f"\nDownloading {selected_model['name']}...\n")
-                wget.download(model_url, model_path)
+                
+                # Get proxy args if configured
+                proxy_args = get_wget_proxy_args()
+                
+                # Use wget.download with proxy support
+                try:
+                    # wget.download doesn't support proxy args directly, so we use subprocess
+                    # to have full control over proxy configuration
+                    cmd = ['wget', '--continue', '-O', model_path] + proxy_args + [model_url]
+                    subprocess.run(cmd, check=True)
+                except Exception as wget_error:
+                    # Fallback to direct wget.download if subprocess fails
+                    print(f"\nAttempting fallback download method...")
+                    wget.download(model_url, model_path)
 
                 # Make the model executable if not on Windows
                 if platform.system() != "Windows":

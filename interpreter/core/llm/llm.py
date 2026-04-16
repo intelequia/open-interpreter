@@ -23,6 +23,9 @@ from .run_text_llm import run_text_llm
 from .run_tool_calling_llm import run_tool_calling_llm
 from .utils.convert_to_openai_messages import convert_to_openai_messages
 
+# Add proxy support
+from ..utils.proxy_utils import get_proxy_config
+
 # Create or get the logger
 logger = logging.getLogger("LiteLLM")
 
@@ -350,7 +353,8 @@ Continuing...
             names = []
             try:
                 # List out all downloaded ollama models. Will fail if ollama isn't installed
-                response = requests.get(f"{api_base}/api/tags")
+                proxies = get_proxy_config()
+                response = requests.get(f"{api_base}/api/tags", proxies=proxies)
                 if response.ok:
                     data = response.json()
                     names = [
@@ -369,12 +373,14 @@ Continuing...
             # Download model if not already installed
             if model_name not in names:
                 self.interpreter.display_message(f"\nDownloading {model_name}...\n")
-                requests.post(f"{api_base}/api/pull", json={"name": model_name})
+                proxies = get_proxy_config()
+                requests.post(f"{api_base}/api/pull", json={"name": model_name}, proxies=proxies)
 
             # Get context window if not set
             if self.context_window == None:
+                proxies = get_proxy_config()
                 response = requests.post(
-                    f"{api_base}/api/show", json={"name": model_name}
+                    f"{api_base}/api/show", json={"name": model_name}, proxies=proxies
                 )
                 model_info = response.json().get("model_info", {})
                 context_length = None
