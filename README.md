@@ -22,6 +22,17 @@
 > interpreter --help
 > ```
 
+> [!TIP]
+> **Intelequia Fork - Proxy Support**: This fork includes full HTTP/HTTPS proxy support for corporate environments.
+> 
+> See [PROXY_CONFIGURATION.md](PROXY_CONFIGURATION.md) for complete documentation on proxy setup and troubleshooting.
+> 
+> Quick setup:
+> ```bash
+> export HTTP_PROXY=http://proxy:8080
+> export NO_PROXY=localhost,127.0.0.0/8,172.17.0.0/16
+> ```
+
 <br>
 
 <img alt="local_explorer" src="https://github.com/OpenInterpreter/open-interpreter/assets/63927363/d941c3b4-b5ad-4642-992c-40edf31e2e7a">
